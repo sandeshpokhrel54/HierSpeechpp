@@ -25,7 +25,9 @@ np.random.seed(seed)
 def load_text(fp):
     with open(fp, 'r') as f:
         filelist = [line.strip() for line in f.readlines()]
+        # filelist = [line for line in f.readlines()]
     return filelist
+
 def load_checkpoint(filepath, device):
     print(filepath)
     assert os.path.isfile(filepath)
@@ -124,12 +126,14 @@ def tts(text, a, hierspeech):
     file_name2 = "{}.wav".format(file_name)
     output_file = os.path.join(a.output_dir, file_name2)
     
-    if a.output_sr == 48000:
-        write(output_file, 48000, converted_audio)
-    elif a.output_sr == 24000:
-        write(output_file, 24000, converted_audio)
-    else:
-        write(output_file, 16000, converted_audio)
+    # if a.output_sr == 48000:
+    #     write(output_file, 48000, converted_audio)
+    # elif a.output_sr == 24000:
+    #     write(output_file, 24000, converted_audio)
+    # else:
+    #     write(output_file, 16000, converted_audio)
+
+    return converted_audio
 
 def model_load(a):
     mel_fn = MelSpectrogramFixed(
@@ -184,15 +188,56 @@ def inference(a):
     # Input Text 
     text = load_text(a.input_txt)
     # text = "hello I'm hierspeech"
-    
-    tts(text, a, hierspeech)
+    print(len(text))
+
+    all_lines = []
+    for line in text:
+        lines = line.strip().split('.')
+        all_lines += lines
+
+    #per 1000 characters
+    one_batch = []
+    all_batches  = []
+    for line in all_lines:
+        if(len(str(one_batch)+str(line))<800):
+            one_batch.append(line)
+        else:
+            all_batches.append(one_batch)
+            one_batch = []
+            one_batch.append(line)
+        
+
+    all_batches.append(line)
+
+    all_audio_snipps = []
+    for batch in all_batches:
+        
+        print(len(str(batch)))
+        try: 
+            converted_audio = tts(batch, a, hierspeech)
+            all_audio_snipps.append(converted_audio)
+        except:
+            print("couldn't call tts")
+
+    #make a list of all converted audio
+    #np.hstack($list of all converted audio)    
+    full_audio = np.hstack(all_audio_snipps)
+    output_file = './output.wav'
+
+    if a.output_sr == 48000:
+        write(output_file, 48000, full_audio)
+    elif a.output_sr == 24000:
+        write(output_file, 24000, full_audio)
+    else:
+        write(output_file, 16000, full_audio)
 
 def main():
     print('Initializing Inference Process..')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input_prompt', default='example/reference_4.wav')
-    parser.add_argument('--input_txt', default='example/reference_4.txt')
+    parser.add_argument('--input_prompt', default='example/arya.wav')
+    # parser.add_argument('--input_txt', default='example/arya_longer.txt')
+    parser.add_argument('--input_txt', default='example/mercy.txt')
     parser.add_argument('--output_dir', default='output')
     parser.add_argument('--ckpt', default='./logs/hierspeechpp_eng_kor/hierspeechpp_v2_ckpt.pth')
     parser.add_argument('--ckpt_text2w2v', '-ct', help='text2w2v checkpoint path', default='./logs/ttv_libritts_v1/ttv_lt960_ckpt.pth')
@@ -220,5 +265,8 @@ def main():
 
     inference(a)
 
+
 if __name__ == '__main__':
     main()
+
+
