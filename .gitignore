@@ -1,2 +1,6 @@
 /logs
-
+**/__pycache__/
+./script.py
+./output.wav
+./output_r.wav
+./output_roy.wav

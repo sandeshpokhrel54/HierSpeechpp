@@ -78,6 +78,7 @@ def tts(text, a, hierspeech):
 
     # If you have a memory issue during denosing the prompt, try to denoise the prompt with cpu before TTS 
     # We will have a plan to replace a memory-efficient denoiser 
+    
     if a.denoise_ratio == 0:
         audio = torch.cat([audio.cuda(), audio.cuda()], dim=0)
     else:
@@ -188,26 +189,30 @@ def inference(a):
     # Input Text 
     text = load_text(a.input_txt)
     # text = "hello I'm hierspeech"
-    print(len(text))
+    # print(len(text))
 
     all_lines = []
     for line in text:
         lines = line.strip().split('.')
         all_lines += lines
 
-    #per 1000 characters
+    # print("all lines", all_lines)
+
+    #per 800 characters
     one_batch = []
     all_batches  = []
     for line in all_lines:
         if(len(str(one_batch)+str(line))<800):
-            one_batch.append(line)
+            one_batch.append(line+str(' '))
         else:
             all_batches.append(one_batch)
             one_batch = []
             one_batch.append(line)
         
+        # print("all batches inside ", all_batches)
 
-    all_batches.append(line)
+    all_batches.append(one_batch)
+    # print("all batches",all_batches)
 
     all_audio_snipps = []
     for batch in all_batches:
@@ -221,8 +226,13 @@ def inference(a):
 
     #make a list of all converted audio
     #np.hstack($list of all converted audio)    
-    full_audio = np.hstack(all_audio_snipps)
-    output_file = './output.wav'
+    # print(len(all_audio_snipps))
+    if(len(all_audio_snipps)>1):
+        full_audio = np.hstack(all_audio_snipps)
+    else:
+        full_audio = all_audio_snipps[0]
+
+    output_file = './output_r.wav'
 
     if a.output_sr == 48000:
         write(output_file, 48000, full_audio)
@@ -235,9 +245,9 @@ def main():
     print('Initializing Inference Process..')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input_prompt', default='example/arya.wav')
+    parser.add_argument('--input_prompt', default='example/roy.wav')
     # parser.add_argument('--input_txt', default='example/arya_longer.txt')
-    parser.add_argument('--input_txt', default='example/mercy.txt')
+    parser.add_argument('--input_txt', default='example/arya.txt')
     parser.add_argument('--output_dir', default='output')
     parser.add_argument('--ckpt', default='./logs/hierspeechpp_eng_kor/hierspeechpp_v2_ckpt.pth')
     parser.add_argument('--ckpt_text2w2v', '-ct', help='text2w2v checkpoint path', default='./logs/ttv_libritts_v1/ttv_lt960_ckpt.pth')
